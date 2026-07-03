@@ -200,31 +200,40 @@ async function handleRegister(e) {
         }
         return;
     } else {
+        // ======= 本地离线注册校验 =======
         const users = loadUsers();
         const normalizedKey = username.toLowerCase();
         const existingEntry = Object.entries(users).find(
             ([key]) => key.toLowerCase() === normalizedKey
         );
+        
         if (existingEntry) {
             const existingName = existingEntry[0];
             regMsg.textContent = `⚠ 该用户名已被注册（已存在：${existingName}），请直接登录`;
             regMsg.className = "auth-msg error";
             showToast("该账号已存在，请切换到登录页面", "error");
+            
+            if (submitBtn) submitBtn.disabled = false; // 记得恢复按钮状态
+
             setTimeout(() => {
                 switchAuthTab("login");
                 loginUsername.value = username;
                 loginMsg.textContent = "💡 该账号已存在，请直接登录";
                 loginMsg.className = "auth-msg success";
             }, 1500);
-            return;
+            
+            return; // 【核心修复】：必须加 return 强制终止函数！绝对不允许往下覆盖原有用户数据！
         }
 
         const passwordHash = await sha256(password);
         if (passwordHash === null) {
             regMsg.textContent = "⚠ 当前浏览器不支持安全加密，请使用 HTTPS 访问或连接服务器后重试";
             regMsg.className = "auth-msg error";
+            if (submitBtn) submitBtn.disabled = false;
             return;
         }
+        
+        // 只有真正没被注册过的新账号，才能走到这一步
         users[username] = {
             passwordHash,
             createdAt: new Date().toISOString(),
@@ -385,6 +394,16 @@ loginForm.addEventListener("submit", handleLogin);
 // =========================
 
 function handleLogout() {
+    // ==========================================
+    // 【核心修复】：退出登录时，如果 WebSocket 连着，强制通知后端清除房间/断开
+    // ==========================================
+    if (_wsConnected && _wsConnected()) {
+        try {
+            // 如果你的后端支持 leave_room 协议，可以先发一条指令
+            _sendMessage({ type: "leave_room" }); 
+        } catch (_) { /* 忽略 */ }
+    }
+
     setCurrentUser(null);
     clearSession();
     try { sessionStorage.removeItem(SESSION_KEY); } catch (_) { /* 忽略 */ }

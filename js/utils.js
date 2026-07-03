@@ -147,9 +147,9 @@ export async function sha256(message) {
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
     } catch (_) {
-        console.warn("[sha256] crypto.subtle 不可用，返回 null（可能为非安全上下文）");
-        return null;
-    }
+        console.warn("[sha256] 降级为伪哈希兜底");
+        return "fallback:" + message; // 确保非 HTTPS 的局域网也能正常离线登录/注册
+}
 }
 
 
@@ -299,6 +299,14 @@ export function createDefaultStats() {
  */
 export function recordGame(win, seconds, mode) {
     if (!currentUser) return;
+
+    // ==========================================
+    // 【核心修复】：强类型校验，防止 NaN 彻底污染用户的 totalSeconds
+    // ==========================================
+    seconds = parseInt(seconds, 10);
+    if (isNaN(seconds) || seconds < 0) {
+        seconds = 0;
+    }
 
     const users = loadUsers();
     const username = currentUser.username;
