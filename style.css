@@ -3920,18 +3920,22 @@ body.light-mode .vs-center {
 }
 
 /* ==========================================
-   【人机模式专用】全端自适应：仅在人机模式激活且显示时才接管
+   【人机模式完美对齐版】
+   宽屏绝对左右并排 / 窄屏绝对居中堆叠
    ========================================== */
 
-/* --- 1. 宽屏状态 (≥ 1201px)：只有当 vs-container 自身没有被 display:none 隐藏时，才赋予 flex 布局 --- */
-@media (min-width: 1201px) {
-
-    /* 核心：如果原本被隐藏了，保持隐藏；如果显现了，才执行左右并排 */
+/* 1. 宽屏状态 (≥ 1251px)：严格禁止换行，大框必须在中间 */
+@media (min-width: 1251px) {
     div.vs-container:not([style*="display: none"]):not([style*="display:none"]) {
         display: flex !important;
         flex-direction: row !important;
+        /* 强行左右并排 */
+        flex-wrap: nowrap !important;
+        /* 宽屏绝不允许换行 */
         justify-content: center !important;
-        align-items: flex-start !important;
+        /* 整体居中 */
+        align-items: center !important;
+        /* 三个组件垂直轴居中 */
         gap: 20px !important;
         width: 100% !important;
     }
@@ -3939,19 +3943,26 @@ body.light-mode .vs-center {
     div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.vs-center {
         display: flex !important;
         flex-direction: column !important;
+        /* 宽屏：内容上下堆叠，维持小卡片形态 */
         align-items: center !important;
-        min-width: 140px !important;
-        padding: 16px 12px !important;
+        justify-content: center !important;
+        min-width: 150px !important;
+        /* 窄宽度，方便左右夹击 */
+        width: auto !important;
+        padding: 16px 14px !important;
         gap: 14px !important;
         order: 0 !important;
+        /* 老老实实呆在中间 */
+        margin: 0 !important;
     }
 }
 
-/* --- 2. 窄屏状态 (≤ 1200px)：只有当显现时，才切换为上下堆叠 --- */
-@media (max-width: 1200px) {
+/* 2. 窄屏状态 (≤ 1250px)：只有变窄或高级难度装不下时，大框才变大横幅 */
+@media (max-width: 1250px) {
     div.vs-container:not([style*="display: none"]):not([style*="display:none"]) {
         display: flex !important;
         flex-direction: column !important;
+        /* 整体变成上下排列 */
         align-items: center !important;
         gap: 16px !important;
         width: 100% !important;
@@ -3959,18 +3970,24 @@ body.light-mode .vs-center {
 
     div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.vs-center {
         order: -1 !important;
+        /* 大框置顶 */
         display: flex !important;
         flex-direction: row !important;
+        /* 里面的子元素变成左右横排 */
         flex-wrap: wrap !important;
-        justify-content: space-around !important;
-        align-items: center !important;
+        justify-content: center !important;
+        /* 内容绝对居中 */
         width: 100% !important;
+        /* 这时才变成通栏大横幅 */
         max-width: 600px !important;
+        /* 限制最大宽度 */
         padding: 10px 16px !important;
         gap: 10px !important;
+        margin: 0 auto 10px !important;
+        /* 大框自身居中 */
     }
 
-    /* 窄屏状态下的细节微调（仅在容器可见时触发） */
+    /* 窄屏状态下的细节调整 */
     div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.vs-score {
         gap: 8px !important;
     }
@@ -3998,10 +4015,9 @@ body.light-mode .vs-center {
     }
 }
 
-/* --- 3. 极致缩放：针对手机等极小屏 (≤ 480px) --- */
+/* 3. 手机极小屏 (≤ 480px) */
 @media (max-width: 480px) {
     div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.vs-center {
-        justify-content: center !important;
         gap: 8px !important;
     }
 
