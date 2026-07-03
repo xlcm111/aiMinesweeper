@@ -19,6 +19,7 @@ import { sfxClick, sfxFlag, sfxLose, sfxWin } from "./audio.js";
 let ws = null;
 export let wsConnected = false;
 let wsReconnectAttempts = 0;
+let _connectTimeoutId = null;  // 用于在断开时清除连接超时定时器
 
 export function getWsUrl() {
     const inputEl = document.getElementById("multi-server-url");
@@ -26,7 +27,8 @@ export function getWsUrl() {
     if (customUrl) return customUrl;
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.hostname;
+    // 处理 file:// 协议或空 hostname（本地直接打开 HTML 文件）
+    const host = window.location.hostname || "localhost";
     const port = window.location.port || "3000";
     const autoUrl = protocol + "//" + host + ":" + port;
 
@@ -45,23 +47,25 @@ export function connectToServer(url) {
     try {
         ws = new WebSocket(targetUrl);
     } catch (e) {
-        updateConnStatus("disconnected", "● 连接失败");
-        showToast("无法连接到服务器", "error");
+        updateConnStatus("disconnected", "● 未连接");
+        showToast("无法连接到服务器，单机模式不受影响 😊", "error");
         return;
     }
 
-    let connectTimeout = setTimeout(() => {
+    clearConnectTimeout();
+    _connectTimeoutId = setTimeout(() => {
+        _connectTimeoutId = null;
         if (ws && ws.readyState === WebSocket.CONNECTING) {
             ws.close();
             ws = null;
             wsConnected = false;
-            updateConnStatus("disconnected", "● 连接超时");
-            showToast("连接超时，请检查服务器地址是否正确", "error");
+            updateConnStatus("disconnected", "● 未连接");
+            showToast("无法连接到服务器，单机模式不受影响 😊", "error");
         }
-    }, 8000);
+    }, 5000);
 
     ws.addEventListener("open", () => {
-        clearTimeout(connectTimeout);
+        clearConnectTimeout();
         wsConnected = true;
         wsReconnectAttempts = 0;
         updateConnStatus("connected", "● 已连接");
@@ -77,18 +81,18 @@ export function connectToServer(url) {
     });
 
     ws.addEventListener("close", () => {
-        clearTimeout(connectTimeout);
+        clearConnectTimeout();
         wsConnected = false;
-        updateConnStatus("disconnected", "● 已断开");
+        updateConnStatus("disconnected", "● 未连接");
 
         if (multiRoomCode && wsReconnectAttempts < WS_MAX_RECONNECT) {
             const delay = WS_RECONNECT_DELAYS[wsReconnectAttempts];
             wsReconnectAttempts++;
             updateConnStatus("connecting", `● 重连中(${wsReconnectAttempts}/${WS_MAX_RECONNECT})...`);
-            showToast(`连接断开，${delay/1000}秒后重连...`, "error");
+            showToast(`连接断开，${delay/1000}秒后自动重连...`, "error");
             setTimeout(() => connectToServer(targetUrl), delay);
         } else if (wsReconnectAttempts >= WS_MAX_RECONNECT) {
-            showToast("无法重新连接，请返回大厅", "error");
+            showToast("无法重新连接，单机模式不受影响 😊", "error");
             resetMultiState();
             showMultiLobby();
         }
@@ -99,8 +103,16 @@ export function connectToServer(url) {
     });
 }
 
+function clearConnectTimeout() {
+    if (_connectTimeoutId) {
+        clearTimeout(_connectTimeoutId);
+        _connectTimeoutId = null;
+    }
+}
+
 export function disconnectFromServer() {
     wsReconnectAttempts = WS_MAX_RECONNECT;
+    clearConnectTimeout();
     if (ws) {
         ws.close();
         ws = null;
@@ -568,7 +580,7 @@ function getMultiDifficulty() {
 
 function handleCreateRoom() {
     if (!wsConnected) {
-        showToast("请先连接到服务器", "error");
+        showToast("请先点击「连接」按钮连接到服务器", "error");
         return;
     }
 

@@ -115,6 +115,7 @@ function switchMode(mode) {
     } else if (mode === "multiplayer") {
         document.getElementById("game-multi").style.display = "flex";
         showMultiLobby();
+        // 仅在未连接时尝试自动连接；连接失败不阻塞，用户可继续使用单机模式
         if (!wsConnected) {
             connectToServer(getWsUrl());
         }

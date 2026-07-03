@@ -175,7 +175,7 @@ async function handleRegister(e) {
     const submitBtn = registerForm.querySelector("button[type=submit]");
     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "注册中..."; }
 
-    regMsg.textContent = "⏳ 正在连接服务器...";
+    regMsg.textContent = "⏳ 正在注册...";
     regMsg.className = "auth-msg";
     const result = await apiCall("/api/register", { username, password });
 
@@ -239,7 +239,7 @@ async function handleRegister(e) {
 
         regMsg.textContent = "✅ 注册成功（本地模式）！请切换到登录";
         regMsg.className = "auth-msg success";
-        showToast("⚠ 已离线注册（仅本设备有效），连接服务器后可跨设备登录", "error");
+        showToast("⚠ 已离线注册（仅本设备有效），单机模式完全可用", "error");
     }
 
     regUsername.value = "";
@@ -279,7 +279,7 @@ async function handleLogin(e) {
     const submitBtn = loginForm.querySelector("button[type=submit]");
     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "登录中..."; }
 
-    loginMsg.textContent = "⏳ 正在连接服务器...";
+    loginMsg.textContent = "⏳ 正在验证...";
     loginMsg.className = "auth-msg";
     const result = await apiCall("/api/login", { username, password });
 
@@ -339,7 +339,7 @@ async function handleLogin(e) {
             return;
         }
 
-        loginMsg.textContent = "✅ 登录成功（本地模式）！";
+        loginMsg.textContent = "✅ 登录成功！（本地模式）";
         loginMsg.className = "auth-msg success";
     }
 

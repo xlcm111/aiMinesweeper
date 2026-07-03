@@ -85,13 +85,16 @@ export function escapeHtml(str) {
 
 /**
  * 调用服务端 API，失败时返回 null（不抛异常）
- * 内置 10 秒超时，避免手机端网络不通时长时间卡死
+ * 内置 3 秒超时，快速失败以切换到本地模式
+ * @param {string} endpoint - API 路径，如 "/api/login"
+ * @param {object} data - 请求体
+ * @param {number} [timeoutMs=3000] - 超时毫秒数
  */
-export async function apiCall(endpoint, data) {
+export async function apiCall(endpoint, data, timeoutMs = 3000) {
     try {
         const base = window.location.origin;
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
         const res = await fetch(base + endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },

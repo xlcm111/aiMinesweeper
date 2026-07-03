@@ -280,7 +280,7 @@ function challengeFriend(friendName) {
     }
 
     if (!_wsConnected || !_wsConnected()) {
-        showToast("正在连接服务器...", "info");
+        showToast("正在建立连接...", "info");
         if (_connectToServer && _getWsUrl) {
             _connectToServer(_getWsUrl());
         }
@@ -293,9 +293,9 @@ function challengeFriend(friendName) {
         setTimeout(() => {
             clearInterval(checkConnection);
             if (!_wsConnected || !_wsConnected()) {
-                showToast("无法连接到服务器，请检查服务器地址", "error");
+                showToast("无法连接到服务器，单机模式不受影响 😊", "error");
             }
-        }, 5000);
+        }, 6000);
         return;
     }
 
