@@ -40,47 +40,47 @@ export const DEFAULT_SETTINGS = {
 export const AI_DIFFICULTY = {
     easy: {
         label: "🌱 初级",
-        speedMin: 800,
-        speedMax: 1200,
-        useFlags: false,
-        useRule2: false,
-        mistakeRate: 0.25,
+        speedMin: 1200,      // 思考速度不慢不紧
+        speedMax: 2000,
+        useFlags: true,      // 【不让他装傻】：初级也必须学会插旗！
+        useRule2: false,     // 【限制脑容量】：关闭规则 2。
+        mistakeRate: 0,      // 【绝不无脑自杀】：拿掉手抖！AI 在自己懂的逻辑里绝对不犯错。
         cornerPrefer: false,
         probHeuristic: false,
         patterns: false,
     },
     medium: {
         label: "⚡ 中级",
-        speedMin: 500,
-        speedMax: 900,
-        useFlags: true,
-        useRule2: true,
-        mistakeRate: 0,
-        cornerPrefer: true,
-        probHeuristic: false,
+        speedMin: 800,       // 稍微敏捷一些
+        speedMax: 1500,
+        useFlags: true,      
+        useRule2: true,      // 【脑子还给它】：中级可以看懂规则 2 
+        mistakeRate: 0,      // 【绝不无脑自杀】：拿掉手抖！
+        cornerPrefer: false, 
+        probHeuristic: false, // 【关键防线】：关闭概率盲猜。
         patterns: false,
     },
     hard: {
         label: "💀 高级",
-        speedMin: 200,
-        speedMax: 450,
+        speedMin: 300,       
+        speedMax: 600,
         useFlags: true,
-        useRule2: true,
-        mistakeRate: 0,
-        cornerPrefer: true,
-        probHeuristic: true,
-        patterns: false,
+        useRule2: true,      
+        mistakeRate: 0,      
+        cornerPrefer: true,  
+        probHeuristic: true, // 高级开始拥有高超的概率盲猜能力，死局极难被炸死
+        patterns: false,     
     },
     expert: {
         label: "👾 专家",
-        speedMin: 60,
-        speedMax: 200,
+        speedMin: 50,        
+        speedMax: 180,
         useFlags: true,
         useRule2: true,
         mistakeRate: 0,
         cornerPrefer: true,
         probHeuristic: true,
-        patterns: true,
+        patterns: true,      // 只有专家懂 1-2-1 等高阶定式
     },
 };
 

@@ -414,20 +414,27 @@ function vsAiStep() {
         return;
     }
 
+// ===== 如果规则推导不出安全格子，AI 必须开始盲猜 =====
     const unknowns = solver.getUnknownCells();
     if (unknowns.length > 0) {
-        let pick;
+        let pick = null; // 1. 初始化 pick 变量
 
-        // 【修改点】：只有高级以上的难度允许使用最优概率启发猜测
-        // 如果是中级，强行降级为随机猜测，给人类玩家留出生路
+        // 2. 只有高级(high)和专家(expert)难度，才允许启动概率启发式盲猜
         if (diffCfg.probHeuristic && currentAiDifficulty !== "medium") { 
             pick = solver.getBestGuess();
-        } else if (diffCfg.cornerPrefer) {
-            // ... 边缘/角落优先逻辑保持原样
-        } else {
+        } 
+        // 3. 如果有角落优先配置，则走角落优先（如果没有，pick 依旧为 null）
+        else if (diffCfg.cornerPrefer) {
+            // ... 你的边缘/角落优先逻辑可以写在这里
+        } 
+
+        // 4. 【核心修复】：如果上面两项高级策略都没选出格子（比如当前是中级难度），
+        // 或者策略失效，则兜底执行像普通人类一样的随机瞎猜！
+        if (!pick) {
             pick = unknowns[Math.floor(Math.random() * unknowns.length)];
         }
 
+        // 5. 确保这一段脱离任何猜测策略的绑定，只要选出 pick 必然执行点击
         if (pick) {
             vsAiOpenCell(pick);
             vsCheckAiWin();
