@@ -23,41 +23,62 @@ export function fmtLED(n) {
 }
 
 /**
- * 为格子添加长按插旗支持（触屏设备）
+ * 为格子添加长按插旗支持（触屏设备优化版）
  * @param {HTMLElement} el - 格子 DOM 元素
  * @param {Function} onFlag - 插旗回调
  */
 export function addLongPressSupport(el, onFlag) {
     let pressTimer = null;
     let startX = 0, startY = 0;
+    let isLongPressTriggered = false; // 新增：防止长按松开后再次误触发普通的点击事件
 
     el.addEventListener("touchstart", (e) => {
+        // 如果是多指触控，直接无视，防止误触
+        if (e.touches.length > 1) return;
+
         const touch = e.touches[0];
         startX = touch.clientX;
         startY = touch.clientY;
+        isLongPressTriggered = false;
+
+        // 优化点一：将长按判定时间从 500ms 缩短到 280ms，手感最灵敏且不卡顿
         pressTimer = setTimeout(() => {
             pressTimer = null;
+            isLongPressTriggered = true;
+            
+            // 尝试触发手机极其精细的排爆震动反馈（如果手机硬件支持）
+            if (navigator.vibrate) {
+                navigator.vibrate(40); 
+            }
+            
             e.preventDefault();
             onFlag();
-        }, 500);
+        }, 280);
     }, { passive: false });
 
     el.addEventListener("touchmove", (e) => {
         if (!pressTimer) return;
         const touch = e.touches[0];
-        if (Math.abs(touch.clientX - startX) > 10 ||
-            Math.abs(touch.clientY - startY) > 10) {
+        
+        // 优化点二：将误触移动阈值从 10 扩大到 24 像素
+        // 允许手指在长按时发生轻微的肌肉震颤或偏移，绝对不轻易打断插旗逻辑
+        if (Math.abs(touch.clientX - startX) > 24 ||
+            Math.abs(touch.clientY - startY) > 24) {
             clearTimeout(pressTimer);
             pressTimer = null;
         }
-    });
+    }, { passive: true });
 
-    el.addEventListener("touchend", () => {
+    el.addEventListener("touchend", (e) => {
         if (pressTimer) {
             clearTimeout(pressTimer);
             pressTimer = null;
         }
-    });
+        // 如果长按已经成功触发了，强行阻止这一次松手引发的普通点击翻开格子
+        if (isLongPressTriggered) {
+            e.preventDefault();
+        }
+    }, { passive: false });
 
     el.addEventListener("touchcancel", () => {
         if (pressTimer) {
@@ -66,7 +87,6 @@ export function addLongPressSupport(el, onFlag) {
         }
     });
 }
-
 
 // =========================
 // HTML 转义
