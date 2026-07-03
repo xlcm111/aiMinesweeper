@@ -975,10 +975,6 @@ html.no-anim .face-btn {
         min-width: auto;
         padding: 8px 12px;
     }
-    .vs-game-panel {
-        transform: scale(0.55);
-        margin-bottom: -70px;
-    }
     .vs-score-value { font-size: 20px; }
     .vs-score-vs { font-size: 14px; }
 
@@ -1075,11 +1071,6 @@ html.no-anim .face-btn {
         width: 34px;
         height: 34px;
         font-size: 14px;
-    }
-
-    .vs-game-panel {
-        transform: scale(0.4);
-        margin-bottom: -90px;
     }
 
     .avatar-picker {
@@ -2855,12 +2846,6 @@ body.light-mode .friend-remove-btn { border-color: rgba(0, 0, 0, 0.1); backgroun
 
 .vs-ai .vs-label {
     border-bottom: 2px solid var(--accent);
-}
-
-.vs-game-panel {
-    transform: scale(0.75);
-    transform-origin: top center;
-    margin-bottom: -40px;
 }
 
 /* 中间状态栏 */

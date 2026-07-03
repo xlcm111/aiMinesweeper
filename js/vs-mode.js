@@ -61,6 +61,26 @@ const aiDiffBtns = document.querySelectorAll(".ai-diff-btn");
 
 
 // =========================
+// VS 模式 — 动态格子大小
+// =========================
+
+function computeVsCellSize() {
+    const maxWidth = window.innerWidth - 40;        // 页面边距
+    const gamePaddingX = 18 * 2 + 5 * 2;            // .game 内边距 + 边框 = 46px
+    const centerWidth = 172;                         // 中间状态栏 + 间距
+    const isStacked = window.innerWidth <= 768;      // 移动端竖向堆叠
+
+    // 每个棋盘可用的最大宽度
+    const availablePerBoard = isStacked
+        ? maxWidth - 40                              // 竖向堆叠时，单板占满宽
+        : (maxWidth - centerWidth) / 2;              // 横向并排时，各占一半
+
+    const maxCellSizeByWidth = Math.floor((availablePerBoard - gamePaddingX) / COLS);
+    // 不小于 12px，不大于原始 CELL_SIZE
+    return Math.max(12, Math.min(CELL_SIZE, maxCellSizeByWidth));
+}
+
+// =========================
 // VS 模式初始化
 // =========================
 
@@ -70,11 +90,15 @@ export function initVsMode() {
     vsBoardHumanEl.innerHTML = "";
     vsBoardAiEl.innerHTML = "";
 
+    // 根据屏幕宽度动态计算 VS 模式下的格子大小
+    const vsCellSize = computeVsCellSize();
+
     vsBoardHumanEl.style.display = "grid";
-    vsBoardHumanEl.style.gridTemplateColumns = `repeat(${COLS}, ${CELL_SIZE}px)`;
+    vsBoardHumanEl.style.gridTemplateColumns = `repeat(${COLS}, ${vsCellSize}px)`;
+    vsBoardHumanEl.style.setProperty("--cell-size", `${vsCellSize}px`);
     vsBoardAiEl.style.display = "grid";
-    vsBoardAiEl.style.gridTemplateColumns = `repeat(${COLS}, ${CELL_SIZE}px)`;
-    document.documentElement.style.setProperty("--cell-size", `${CELL_SIZE}px`);
+    vsBoardAiEl.style.gridTemplateColumns = `repeat(${COLS}, ${vsCellSize}px)`;
+    vsBoardAiEl.style.setProperty("--cell-size", `${vsCellSize}px`);
 
     // 初始化 AI 棋盘
     vsAiBoard = [];
