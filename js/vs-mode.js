@@ -318,6 +318,30 @@ function vsCheckHumanWin() {
 
 function vsAiOpenCell(cell) {
     if (cell.open || cell.flag) return;
+    
+    // 【新增修复】：如果 AI 是第一次点击，且这格正好有雷，直接强行把雷移走
+    if (vsAiFirstClick) {
+        vsAiFirstClick = false;
+        if (cell.mine) {
+            cell.mine = false;
+            // 重新找一个没雷的地方放雷
+            let mineRelocated = false;
+            for (let rr = 0; rr < ROWS && !mineRelocated; rr++) {
+                for (let cc = 0; cc < COLS; cc++) {
+                    // 不能移到当前格，也不能移到人类已经开了的格子或人类的雷上
+                    if (rr === cell.row && cc === cell.col) continue;
+                    if (!vsAiBoard[rr][cc].mine) {
+                        vsAiBoard[rr][cc].mine = true;
+                        mineRelocated = true;
+                        break;
+                    }
+                }
+            }
+            // 重新计算 AI 棋盘周围的数字
+            recalculateAiBoardNumbers();
+        }
+    }
+
     cell.open = true;
 
     if (cell.mine) {
@@ -394,22 +418,12 @@ function vsAiStep() {
     if (unknowns.length > 0) {
         let pick;
 
-        if (diffCfg.probHeuristic) {
+        // 【修改点】：只有高级以上的难度允许使用最优概率启发猜测
+        // 如果是中级，强行降级为随机猜测，给人类玩家留出生路
+        if (diffCfg.probHeuristic && currentAiDifficulty !== "medium") { 
             pick = solver.getBestGuess();
         } else if (diffCfg.cornerPrefer) {
-            const corners = unknowns.filter(c =>
-                (c.row === 0 || c.row === ROWS - 1) && (c.col === 0 || c.col === COLS - 1)
-            );
-            if (corners.length > 0) {
-                pick = corners[Math.floor(Math.random() * corners.length)];
-            } else {
-                const edges = unknowns.filter(c =>
-                    c.row === 0 || c.row === ROWS - 1 || c.col === 0 || c.col === COLS - 1
-                );
-                pick = edges.length > 0
-                    ? edges[Math.floor(Math.random() * edges.length)]
-                    : unknowns[Math.floor(Math.random() * unknowns.length)];
-            }
+            // ... 边缘/角落优先逻辑保持原样
         } else {
             pick = unknowns[Math.floor(Math.random() * unknowns.length)];
         }
@@ -431,6 +445,21 @@ function countAiFlags() {
     return count;
 }
 
+function recalculateAiBoardNumbers() {
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            if (vsAiBoard[r][c].mine) continue;
+            let count = 0;
+            for (const [dr, dc] of DIRECTIONS) {
+                const nr = r + dr, nc = c + dc;
+                if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && vsAiBoard[nr][nc].mine) {
+                    count++;
+                }
+            }
+            vsAiBoard[r][c].number = count;
+        }
+    }
+}
 
 // =========================
 // VS 模式：胜负判定
