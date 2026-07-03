@@ -298,19 +298,32 @@ export function createDefaultStats() {
  * 记录一局游戏（在游戏结束时调用）
  */
 export function recordGame(win, seconds, mode) {
-    if (!currentUser) return;
-
-    // ==========================================
-    // 【核心修复】：强类型校验，防止 NaN 彻底污染用户的 totalSeconds
-    // ==========================================
+    // 💡 原本是：if (!currentUser) return;
+    // 💡 我们把它改成：未登录时，默认记录到离线 Guest 账号里！
+    
     seconds = parseInt(seconds, 10);
-    if (isNaN(seconds) || seconds < 0) {
-        seconds = 0;
-    }
+    if (isNaN(seconds) || seconds < 0) seconds = 0;
 
     const users = loadUsers();
-    const username = currentUser.username;
-    if (!users[username]) return;
+    // 如果登录了用在线用户名，没登录用 Guest 游客名
+    const username = currentUser ? currentUser.username : "Guest"; 
+    
+    if (!users[username]) {
+        // 如果游客卡片意外不存在，补全它
+        if (username === "Guest") {
+            users["Guest"] = {
+                createdAt: new Date().toISOString(),
+                nickname: "游客玩家 (未登录)",
+                avatar: "👤",
+                stats: createDefaultStats(),
+                friends: [],
+                friendRequestsSent: [],
+                friendRequestsReceived: []
+            };
+        } else {
+            return;
+        }
+    }
 
     const stats = users[username].stats;
     stats.games++;

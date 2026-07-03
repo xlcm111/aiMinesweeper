@@ -76,7 +76,7 @@ const authTabs           = document.querySelectorAll(".auth-tab");
 
 
 // =========================
-// 面板开关
+// 面板开关（免登录游客直出版）
 // =========================
 
 export function openAuthPanel() {
@@ -85,11 +85,8 @@ export function openAuthPanel() {
     userToggleBtn.style.opacity = "0";
     userToggleBtn.style.pointerEvents = "none";
 
-    if (currentUser) {
-        showProfileView();
-    } else {
-        showLoginView();
-    }
+    // 【核心改动】：不再一刀切。无论登没登录，都优先展示个人中心（查看战绩）
+    showProfileView(); 
 }
 
 export function closeAuthPanel() {
@@ -106,6 +103,7 @@ function showLoginView() {
 }
 
 function showProfileView() {
+    // 【核心改动】：如果已登录，正常展示；如果未登录，展示本地游客战绩
     authViewLogin.style.display = "none";
     authViewProfile.style.display = "";
     updateProfileUI();
@@ -476,38 +474,77 @@ export function updateUserButtonState() {
 
 
 // =========================
-// 更新个人中心 UI
+// 更新个人中心 UI (支持离线游客免登录查看)
 // =========================
 
 function updateProfileUI() {
-    if (!currentUser) return;
-
     const users = loadUsers();
-    const user = users[currentUser.username];
+    let user = null;
+    let usernameForColor = "Guest";
+
+    if (currentUser) {
+        // 1. 已登录状态：读取当前云端/本地用户
+        user = users[currentUser.username];
+        usernameForColor = currentUser.username;
+    } else {
+        // 2. 未登录（游客模式）：如果本地连本地游客卡片都没有，当场初始化一个
+        if (!users["Guest"]) {
+            users["Guest"] = {
+                createdAt: new Date().toISOString(),
+                nickname: "游客玩家 (未登录)",
+                avatar: "👤",
+                stats: createDefaultStats(), // 使用 utils.js 里的默认 0 战绩模板
+                friends: [],
+                friendRequestsSent: [],
+                friendRequestsReceived: []
+            };
+            saveUsers(users);
+        }
+        user = users["Guest"];
+        usernameForColor = "Guest";
+    }
+
     if (!user) return;
 
+    // 以下是数据格式化与补全判定
     let needsSave = false;
     if (!user.avatar) { user.avatar = "👤"; needsSave = true; }
-    if (!user.nickname) { user.nickname = currentUser.username; needsSave = true; }
+    if (!user.nickname) { user.nickname = currentUser ? currentUser.username : "游客玩家"; needsSave = true; }
     if (needsSave) saveUsers(users);
 
     const stats = user.stats;
 
+    // ---- 渲染头像与用户名 ----
     const avatarEl = document.getElementById("profile-avatar");
     const userAvatar = user.avatar || "👤";
     avatarEl.textContent = userAvatar;
-    avatarEl.style.background = avatarColor(currentUser.username);
+    avatarEl.style.background = avatarColor(usernameForColor);
 
-    const displayName = user.nickname || currentUser.username;
+    const displayName = user.nickname;
     profileUsername.textContent = displayName;
+    
     const created = new Date(user.createdAt);
-    profileJoinDate.textContent = `注册于 ${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}-${String(created.getDate()).padStart(2, "0")}`;
+    profileJoinDate.textContent = currentUser 
+        ? `注册于 ${created.getFullYear()}-${String(created.getMonth() + 1).padStart(2, "0")}-${String(created.getDate()).padStart(2, "0")}`
+        : `欢迎体验！登录可永久同步战绩`; // 游客状态下的温馨提示
 
+    // 【核心改动】：控制弹窗底部的按钮展示。如果是游客，把“编辑资料”隐藏或变成“绑定/切换账号”
     if (profileNicknameInput) {
-        profileNicknameInput.value = user.nickname || "";
+        profileNicknameInput.value = currentUser ? (user.nickname || "") : "";
     }
     if (avatarPicker) {
         renderAvatarPicker(userAvatar);
+    }
+    
+    // 如果是游客，不提供编辑资料，只提供登录注册入口
+    if (!currentUser) {
+        editProfileBtn.style.display = "none";      // 隐藏编辑资料
+        logoutBtn.style.display = "none";           // 隐藏退出登录
+        switchAccountBtn.textContent = "🔗 登录/注册 以同步数据"; // 改写切换账号按钮
+    } else {
+        editProfileBtn.style.display = "";
+        logoutBtn.style.display = "";
+        switchAccountBtn.textContent = "🔄 切换账号";
     }
 
     const lvl = calcLevel(stats.games);
