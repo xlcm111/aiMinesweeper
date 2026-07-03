@@ -3918,3 +3918,97 @@ body.light-mode .vs-center {
         0 4px 20px rgba(0, 0, 0, 0.04),
         inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
 }
+
+/* ==========================================
+   【人机模式专用】全端自适应：仅在人机模式激活且显示时才接管
+   ========================================== */
+
+/* --- 1. 宽屏状态 (≥ 1201px)：只有当 vs-container 自身没有被 display:none 隐藏时，才赋予 flex 布局 --- */
+@media (min-width: 1201px) {
+
+    /* 核心：如果原本被隐藏了，保持隐藏；如果显现了，才执行左右并排 */
+    div.vs-container:not([style*="display: none"]):not([style*="display:none"]) {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: center !important;
+        align-items: flex-start !important;
+        gap: 20px !important;
+        width: 100% !important;
+    }
+
+    div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.vs-center {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        min-width: 140px !important;
+        padding: 16px 12px !important;
+        gap: 14px !important;
+        order: 0 !important;
+    }
+}
+
+/* --- 2. 窄屏状态 (≤ 1200px)：只有当显现时，才切换为上下堆叠 --- */
+@media (max-width: 1200px) {
+    div.vs-container:not([style*="display: none"]):not([style*="display:none"]) {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 16px !important;
+        width: 100% !important;
+    }
+
+    div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.vs-center {
+        order: -1 !important;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        justify-content: space-around !important;
+        align-items: center !important;
+        width: 100% !important;
+        max-width: 600px !important;
+        padding: 10px 16px !important;
+        gap: 10px !important;
+    }
+
+    /* 窄屏状态下的细节微调（仅在容器可见时触发） */
+    div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.vs-score {
+        gap: 8px !important;
+    }
+
+    div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.vs-score-value {
+        font-size: 20px !important;
+    }
+
+    div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.ai-diff-btn {
+        padding: 4px 8px !important;
+        font-size: 11px !important;
+    }
+
+    div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.vs-start-btn {
+        padding: 6px 16px !important;
+        font-size: 13px !important;
+    }
+
+    div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.vs-status {
+        font-size: 12px !important;
+        min-height: unset !important;
+        width: 100% !important;
+        text-align: center !important;
+        margin-top: 2px !important;
+    }
+}
+
+/* --- 3. 极致缩放：针对手机等极小屏 (≤ 480px) --- */
+@media (max-width: 480px) {
+    div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.vs-center {
+        justify-content: center !important;
+        gap: 8px !important;
+    }
+
+    div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.vs-score,
+    div.vs-container:not([style*="display: none"]):not([style*="display:none"]) div.vs-ai-difficulty {
+        width: 100% !important;
+        justify-content: center !important;
+        text-align: center !important;
+    }
+}
