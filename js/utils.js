@@ -23,45 +23,41 @@ export function fmtLED(n) {
 }
 
 /**
- * 为格子添加长按插旗支持（触屏设备优化版）
+ * 为格子添加长按插旗支持（触屏设备绝对防穿透版）
  * @param {HTMLElement} el - 格子 DOM 元素
  * @param {Function} onFlag - 插旗回调
  */
 export function addLongPressSupport(el, onFlag) {
     let pressTimer = null;
     let startX = 0, startY = 0;
-    let isLongPressTriggered = false; // 新增：防止长按松开后再次误触发普通的点击事件
+    
+    // 用 el 本身的属性来存状态，比局部变量更稳固，方便外部或 click 事件直接读取
+    el.dataset.isLongPress = "false"; 
 
     el.addEventListener("touchstart", (e) => {
-        // 如果是多指触控，直接无视，防止误触
         if (e.touches.length > 1) return;
 
         const touch = e.touches[0];
         startX = touch.clientX;
         startY = touch.clientY;
-        isLongPressTriggered = false;
+        el.dataset.isLongPress = "false"; // 每次刚按下时重置
 
-        // 优化点一：将长按判定时间从 500ms 缩短到 280ms，手感最灵敏且不卡顿
         pressTimer = setTimeout(() => {
             pressTimer = null;
-            isLongPressTriggered = true;
+            el.dataset.isLongPress = "true"; // 标记当前已经是长按行为
             
-            // 尝试触发手机极其精细的排爆震动反馈（如果手机硬件支持）
             if (navigator.vibrate) {
                 navigator.vibrate(40); 
             }
             
-            e.preventDefault();
             onFlag();
         }, 280);
-    }, { passive: false });
+    }, { passive: true }); // 修改为 true：不阻止默认滚动，提升触屏平滑度
 
     el.addEventListener("touchmove", (e) => {
         if (!pressTimer) return;
         const touch = e.touches[0];
         
-        // 优化点二：将误触移动阈值从 10 扩大到 24 像素
-        // 允许手指在长按时发生轻微的肌肉震颤或偏移，绝对不轻易打断插旗逻辑
         if (Math.abs(touch.clientX - startX) > 24 ||
             Math.abs(touch.clientY - startY) > 24) {
             clearTimeout(pressTimer);
@@ -74,18 +70,32 @@ export function addLongPressSupport(el, onFlag) {
             clearTimeout(pressTimer);
             pressTimer = null;
         }
-        // 如果长按已经成功触发了，强行阻止这一次松手引发的普通点击翻开格子
-        if (isLongPressTriggered) {
+        
+        // 【核心拦截一】如果是长按触发的抬起，强行阻止一切后续冒泡和默认点击
+        if (el.dataset.isLongPress === "true") {
             e.preventDefault();
+            e.stopPropagation();
+            // 延时清除标记，确保后续零点几秒内的原生 click 穿透过来时也能被挡住
+            setTimeout(() => { el.dataset.isLongPress = "false"; }, 100);
         }
-    }, { passive: false });
+    }, { passive: false }); // 必须为 false，否则 e.preventDefault() 会失效
 
     el.addEventListener("touchcancel", () => {
         if (pressTimer) {
             clearTimeout(pressTimer);
             pressTimer = null;
         }
+        el.dataset.isLongPress = "false";
     });
+
+    // 【核心拦截二】直接在 DOM 节点的普通点击事件上挂起防御盾牌
+    // 如果发现刚刚才发生过长按，直接把普通的“点开格子”逻辑原地拦截掉！
+    el.addEventListener("click", (e) => {
+        if (el.dataset.isLongPress === "true") {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, { capture: true }); // 使用捕获模式，确保比游戏自身的点击逻辑更早执行
 }
 
 // =========================
@@ -105,16 +115,13 @@ export function escapeHtml(str) {
 
 /**
  * 调用服务端 API，失败时返回 null（不抛异常）
- * 内置 3 秒超时，快速失败以切换到本地模式
- * @param {string} endpoint - API 路径，如 "/api/login"
- * @param {object} data - 请求体
- * @param {number} [timeoutMs=3000] - 超时毫秒数
+ * 内置 10 秒超时，避免手机端网络不通时长时间卡死
  */
-export async function apiCall(endpoint, data, timeoutMs = 3000) {
+export async function apiCall(endpoint, data) {
     try {
         const base = window.location.origin;
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
         const res = await fetch(base + endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
