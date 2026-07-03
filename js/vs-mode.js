@@ -385,7 +385,7 @@ function vsAiStep() {
     const { safe, mines } = solver.deduce();
 
     if (diffCfg.mistakeRate > 0 && Math.random() < diffCfg.mistakeRate) {
-        const unknowns = solver.getUnknownCells();
+        const unknowns = solver.getUnknownCells().filter(c => !c.flag);
         if (unknowns.length > 0) {
             const pick = unknowns[Math.floor(Math.random() * unknowns.length)];
             vsAiOpenCell(pick);
@@ -415,7 +415,7 @@ function vsAiStep() {
     }
 
 // ===== 如果规则推导不出安全格子，AI 必须开始盲猜 =====
-    const unknowns = solver.getUnknownCells();
+    const unknowns = solver.getUnknownCells().filter(c => !c.flag);
     if (unknowns.length > 0) {
         let pick = null; // 1. 初始化 pick 变量
 

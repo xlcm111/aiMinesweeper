@@ -417,6 +417,44 @@ function getPlayerList(room) {
 }
 
 /**
+ * 安全地将玩家从房间移除，处理空房间清理、房主转移、广播通知
+ * @returns {{ room, leftUsername } | null}
+ */
+function removePlayerFromRoom(roomCode, playerId, ws) {
+    const room = rooms.get(roomCode);
+    if (!room) return null;
+
+    const playerIdx = room.players.findIndex(p => p.id === playerId);
+    if (playerIdx === -1) return null;
+
+    const wasHost = room.players[playerIdx].isHost;
+    const leftUsername = room.players[playerIdx].username;
+    room.players.splice(playerIdx, 1);
+
+    if (room.players.length === 0) {
+        // 清理空房间及其挂载的挑战超时定时器
+        if (room._challengeTimeout) {
+            clearTimeout(room._challengeTimeout);
+        }
+        rooms.delete(roomCode);
+        console.log(`[房间] ${roomCode} 已关闭（无玩家）`);
+    } else {
+        if (wasHost) {
+            room.players[0].isHost = true;
+            room.hostId = room.players[0].id;
+        }
+        broadcast(room, {
+            type: "player_left",
+            username: leftUsername,
+            players: getPlayerList(room),
+        });
+    }
+
+    sendTo(ws, { type: "left_room" });
+    return { room: room.players.length > 0 ? room : null, leftUsername };
+}
+
+/**
  * 获取排名
  */
 function getRankings(room) {
@@ -478,9 +516,10 @@ wss.on("connection", (ws) => {
             // 创建房间
             // =========================
             case "create_room": {
+                // 【修复】已在其他房间时，先安全退出旧房间再创建，防止僵尸引用
                 if (currentRoomCode) {
-                    sendTo(ws, { type: "error", message: "你已在房间中" });
-                    return;
+                    removePlayerFromRoom(currentRoomCode, currentPlayerId, ws);
+                    console.log(`[房间] 自动离开旧房间后创建新房间`);
                 }
 
                 const username = (msg.username || "Guest").substring(0, 20);
@@ -528,9 +567,10 @@ wss.on("connection", (ws) => {
             // 加入房间
             // =========================
             case "join_room": {
+                // 【修复】已在其他房间时，先安全退出旧房间再加入，防止僵尸引用
                 if (currentRoomCode) {
-                    sendTo(ws, { type: "error", message: "你已在房间中" });
-                    return;
+                    removePlayerFromRoom(currentRoomCode, currentPlayerId, ws);
+                    console.log(`[房间] 自动离开旧房间后加入新房间`);
                 }
 
                 const roomCode = (msg.roomCode || "").toUpperCase().trim();
@@ -579,6 +619,11 @@ wss.on("connection", (ws) => {
                 }
 
                 room.players.push(player);
+                // 【修复】玩家成功加入后，清除挑战超时定时器
+                if (room._challengeTimeout) {
+                    clearTimeout(room._challengeTimeout);
+                    room._challengeTimeout = null;
+                }
                 currentRoomCode = roomCode;
                 currentPlayerId = player.id;
 
@@ -967,6 +1012,15 @@ wss.on("connection", (ws) => {
                     };
 
                     rooms.set(roomCode, room);
+
+                    // 【修复】10秒超时保护：若双方未成功加入则自动销毁房间，防止内存泄漏
+                    room._challengeTimeout = setTimeout(() => {
+                        const currentRoom = rooms.get(roomCode);
+                        if (currentRoom && currentRoom.players.length < 2) {
+                            rooms.delete(roomCode);
+                            console.log(`[挑战] 房间 ${roomCode} 超时无人加入，已自动销毁`);
+                        }
+                    }, 10000);
 
                     // 通知双方房间码
                     sendTo(challenger.ws, {

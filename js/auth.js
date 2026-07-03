@@ -232,10 +232,12 @@ async function handleRegister(e) {
         }
         
         // 只有真正没被注册过的新账号，才能走到这一步
-        users[username] = {
+        // 【修复】键名统一转小写保证唯一性，原始大小写存入 displayName
+        users[username.toLowerCase()] = {
             passwordHash,
             createdAt: new Date().toISOString(),
             nickname: username,
+            displayName: username,
             avatar: "👤",
             stats: createDefaultStats(),
             friends: [],
