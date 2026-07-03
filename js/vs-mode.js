@@ -1,4 +1,4 @@
-// =========================
+﻿// =========================
 // 人机对战模式
 // =========================
 
@@ -319,31 +319,33 @@ function vsCheckHumanWin() {
 function vsAiOpenCell(cell) {
     if (cell.open || cell.flag) return;
     
-    // 【新增修复】：如果 AI 是第一次点击，且这格正好有雷，直接强行把雷移走
     if (vsAiFirstClick) {
         vsAiFirstClick = false;
-        if (cell.mine) {
-            cell.mine = false;
-            // 重新找一个没雷的地方放雷
-            let mineRelocated = false;
-            for (let rr = 0; rr < ROWS && !mineRelocated; rr++) {
-                for (let cc = 0; cc < COLS; cc++) {
-                    // 不能移到当前格，也不能移到人类已经开了的格子或人类的雷上
-                    if (rr === cell.row && cc === cell.col) continue;
-                    if (!vsAiBoard[rr][cc].mine) {
-                        vsAiBoard[rr][cc].mine = true;
-                        mineRelocated = true;
-                        break;
-                    }
+    }
+    
+    // AI 永不踩雷：无论第几步，只要目标格是雷就强行搬迁到其他安全格
+    if (cell.mine) {
+        cell.mine = false;
+        let mineRelocated = false;
+        for (let rr = 0; rr < ROWS && !mineRelocated; rr++) {
+            for (let cc = 0; cc < COLS; cc++) {
+                if (rr === cell.row && cc === cell.col) continue;
+                if (!vsAiBoard[rr][cc].mine && !vsAiBoard[rr][cc].open) {
+                    vsAiBoard[rr][cc].mine = true;
+                    mineRelocated = true;
+                    break;
                 }
             }
-            // 重新计算 AI 棋盘周围的数字
+        }
+        if (mineRelocated) {
             recalculateAiBoardNumbers();
         }
+        // 无处可迁时（极端边界），该格确认为安全格，正常翻开
     }
 
     cell.open = true;
 
+    // 理论上不会再进入此分支，保留作为防御性断言
     if (cell.mine) {
         cell.element.classList.add("mine-death");
         vsAiDead = true;
@@ -385,7 +387,7 @@ function vsAiStep() {
     const { safe, mines } = solver.deduce();
 
     if (diffCfg.mistakeRate > 0 && Math.random() < diffCfg.mistakeRate) {
-        const unknowns = solver.getUnknownCells().filter(c => !c.flag);
+        const unknowns = solver.getUnknownCells().filter(c => !c.flag && !c.mine);
         if (unknowns.length > 0) {
             const pick = unknowns[Math.floor(Math.random() * unknowns.length)];
             vsAiOpenCell(pick);
@@ -415,13 +417,14 @@ function vsAiStep() {
     }
 
 // ===== 如果规则推导不出安全格子，AI 必须开始盲猜 =====
-    const unknowns = solver.getUnknownCells().filter(c => !c.flag);
+    const unknowns = solver.getUnknownCells().filter(c => !c.flag && !c.mine);
     if (unknowns.length > 0) {
         let pick = null; // 1. 初始化 pick 变量
 
         // 2. 只有高级(high)和专家(expert)难度，才允许启动概率启发式盲猜
         if (diffCfg.probHeuristic && currentAiDifficulty !== "medium") { 
             pick = solver.getBestGuess();
+            if (pick && pick.mine) pick = null; // 绝不踩雷：启发式若返回雷格则作废
         } 
         // 3. 如果有角落优先配置，则走角落优先（如果没有，pick 依旧为 null）
         else if (diffCfg.cornerPrefer) {
