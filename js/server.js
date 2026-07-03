@@ -245,8 +245,8 @@ const server = http.createServer(async (req, res) => {
             const [storedKey, user] = existingEntry;
             if (stats) user.stats = stats;
             if (friends) user.friends = friends;
-            if (friendRequestsSent) user.friendsRequestsSent = friendRequestsSent;
-            if (friendRequestsReceived) user.friendsRequestsReceived = friendRequestsReceived;
+            if (friendRequestsSent) user.friendRequestsSent = friendRequestsSent;
+            if (friendRequestsReceived) user.friendRequestsReceived = friendRequestsReceived;
             saveUsersToFile();
             return sendJSON(res, 200, { ok: true, message: "数据已同步" });
         } catch (err) {

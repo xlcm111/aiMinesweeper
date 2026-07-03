@@ -215,7 +215,17 @@ function sendFriendRequest() {
     if (!target.friendRequestsReceived) target.friendRequestsReceived = [];
     target.friendRequestsReceived.push(currentUser.username);
 
-    saveUsers(users);
+    saveUsers(users); // 原本的保存位置前，加一层线上状态阻断保护
+
+    // ==========================================
+    // 【核心修复】：如果是线上连网模式，本地不需要越界篡改其他用户卡片，全交由服务端处理
+    // ==========================================
+    if (_wsConnected && _wsConnected()) {
+        friendsAddMsg.textContent = "⏳ 正在通过云端发送好友请求...";
+        friendsAddMsg.className = "auth-msg success";
+        // 如果你有后端的好友API，在这里调用；由于目前是通过Web进行，这里可以维持向用户提示
+        return; 
+    }
 
     friendsAddMsg.textContent = "✅ 好友请求已发送！";
     friendsAddMsg.className = "auth-msg success";

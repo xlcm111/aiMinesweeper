@@ -41,6 +41,11 @@ export function connectToServer(url) {
         return;
     }
 
+    // ==========================================
+    // 【核心修复】：每次重新发起连接时，必须将重连计数器重置为 0
+    // ==========================================
+    wsReconnectAttempts = 0; 
+
     const targetUrl = url || getWsUrl();
     updateConnStatus("connecting", "● 连接中...");
 
