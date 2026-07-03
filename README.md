@@ -39,19 +39,28 @@
 ```text
 aiMinesweeper/
 ├── index.html              # 前端主入口页面
-├── style.css               # 全局样式（包含响应式适配、全套白天/黑夜主题覆盖）
-├── config.js               # 游戏核心配置（关卡雷数、四级 AI 智商及速度梯队参数）
+├── style.css               # 全局样式（响应式适配、全套白天/黑夜主题覆盖）
 ├── js/                     # 模块化前端核心逻辑
+│   ├── main.js             # 应用主入口，启动初始化与模块编排
+│   ├── config.js           # 游戏核心配置（关卡雷数、四级 AI 智商及速度梯队参数）
 │   ├── state.js            # 核心全局状态管理机制
 │   ├── cell.js             # 单个格子行为与状态类
 │   ├── classic.js          # 经典单机模式控制器
 │   ├── vs-mode.js          # 人机对战核心状态机（首步防炸保护、降智盲猜兜底）
 │   ├── ai-solver.js        # AI 逻辑求解器（规则1/2推导、高阶定式识别、概率启发盲猜）
 │   ├── multiplayer.js      # WebSocket 联机客户端核心
-│   └── utils.js            # LED数字格式化、移动端长按适配等工具集
-├── server.js               # Node.js 高并发后端服务器
+│   ├── server.js           # Node.js 高并发后端服务器（WebSocket 房间状态机）
+│   ├── auth.js             # 账号注册/登录与云端战绩同步
+│   ├── leaderboard.js      # 动态排行榜与最佳纪录管理
+│   ├── friends.js          # 好友系统（添加/删除/在线状态）
+│   ├── settings.js         # 用户偏好设置面板
+│   ├── theme.js            # 全域双主题切换引擎（深邃夜空 / 日落暖阳）
+│   ├── particles.js        # Canvas 全屏动态流星粒子背景渲染
+│   ├── audio.js            # 游戏音效管理
+│   └── utils.js            # LED 数字格式化、移动端长按适配等工具集
 ├── package.json            # Node 项目配置文件
-└── start-multiplayer.bat   # Windows 环境一键本地全栈启动脚本
+├── start-multiplayer.bat   # Windows 环境一键本地全栈启动脚本
+└── .nojekyll               # GitHub Pages 静态资源直出配置
 ```
 
 ---
