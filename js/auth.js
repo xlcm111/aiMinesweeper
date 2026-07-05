@@ -141,6 +141,41 @@ authTabs.forEach(tab => {
 
 
 // =========================
+// 辅助导航函数（解决定时器交织与流程冲突）
+// =========================
+
+/**
+ * 注册成功后：清空表单 → 1s 后切换到登录面板并预填用户名
+ */
+function gotoLoginAfterSuccess(username) {
+    regUsername.value = "";
+    regPassword.value = "";
+    regPassword2.value = "";
+    setTimeout(() => {
+        switchAuthTab("login");
+        loginUsername.value = username;
+        loginMsg.textContent = "✅ 注册成功，请登录";
+        loginMsg.className = "auth-msg success";
+    }, 1000);
+}
+
+/**
+ * 注册受阻（如账号已存在）：清空表单 → 1.5s 后切换到登录面板并提示用户直接登录
+ */
+function gotoLoginWithError(username, loginMsgText) {
+    regUsername.value = "";
+    regPassword.value = "";
+    regPassword2.value = "";
+    setTimeout(() => {
+        switchAuthTab("login");
+        loginUsername.value = username;
+        loginMsg.textContent = loginMsgText;
+        loginMsg.className = "auth-msg success";
+    }, 1500);
+}
+
+
+// =========================
 // 注册
 // =========================
 
@@ -154,6 +189,7 @@ async function handleRegister(e) {
     regMsg.textContent = "";
     regMsg.className = "auth-msg";
 
+    // ---- 表单校验 ----
     if (!isValidUsername(username)) {
         regMsg.textContent = "⚠ 用户名需为4-20位字母/数字/下划线";
         regMsg.className = "auth-msg error";
@@ -173,94 +209,85 @@ async function handleRegister(e) {
     const submitBtn = registerForm.querySelector("button[type=submit]");
     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = "注册中..."; }
 
+    // ---- 尝试云端注册 ----
     regMsg.textContent = "⏳ 正在注册...";
     regMsg.className = "auth-msg";
     const result = await apiCall("/api/register", { username, password });
 
     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = "注 册"; }
 
+    // ① 云端注册成功 → 导航到登录页
     if (result && result.ok) {
         regMsg.textContent = "✅ 注册成功！请切换到登录";
         regMsg.className = "auth-msg success";
         showToast("✅ 注册成功！请切换到登录页面", "success");
-    } else if (result && !result.ok) {
+        gotoLoginAfterSuccess(username);
+        return;  // 阻断后续代码，防止定时器交织
+    }
+
+    // ② 云端返回明确错误
+    if (result && !result.ok) {
         regMsg.textContent = "⚠ " + result.message;
         regMsg.className = "auth-msg error";
         showToast(result.message, "error");
 
         if (result.message && result.message.includes("已被注册")) {
-            setTimeout(() => {
-                switchAuthTab("login");
-                loginUsername.value = username;
-                loginMsg.textContent = "💡 该账号已存在，请直接登录";
-                loginMsg.className = "auth-msg success";
-            }, 1500);
+            gotoLoginWithError(username, "💡 该账号已存在，请直接登录");
+            return;  // 阻断后续代码
         }
-        return;
-    } else {
-        // ======= 本地离线注册校验 =======
-        const users = loadUsers();
-        const normalizedKey = username.toLowerCase();
-        const existingEntry = Object.entries(users).find(
-            ([key]) => key.toLowerCase() === normalizedKey
-        );
-        
-        if (existingEntry) {
-            const existingName = existingEntry[0];
-            regMsg.textContent = `⚠ 该用户名已被注册（已存在：${existingName}），请直接登录`;
-            regMsg.className = "auth-msg error";
-            showToast("该账号已存在，请切换到登录页面", "error");
-            
-            if (submitBtn) submitBtn.disabled = false; // 记得恢复按钮状态
-
-            setTimeout(() => {
-                switchAuthTab("login");
-                loginUsername.value = username;
-                loginMsg.textContent = "💡 该账号已存在，请直接登录";
-                loginMsg.className = "auth-msg success";
-            }, 1500);
-            
-            return; // 【核心修复】：必须加 return 强制终止函数！绝对不允许往下覆盖原有用户数据！
-        }
-
-        const passwordHash = await sha256(password);
-        if (passwordHash === null) {
-            regMsg.textContent = "⚠ 当前浏览器不支持安全加密，请使用 HTTPS 访问或连接服务器后重试";
-            regMsg.className = "auth-msg error";
-            if (submitBtn) submitBtn.disabled = false;
-            return;
-        }
-        
-        // 只有真正没被注册过的新账号，才能走到这一步
-        // 【修复】键名统一转小写保证唯一性，原始大小写存入 displayName
-        users[username.toLowerCase()] = {
-            passwordHash,
-            createdAt: new Date().toISOString(),
-            nickname: username,
-            displayName: username,
-            avatar: "👤",
-            stats: createDefaultStats(),
-            friends: [],
-            friendRequestsSent: [],
-            friendRequestsReceived: [],
-        };
-        saveUsers(users);
-
-        regMsg.textContent = "✅ 注册成功（本地模式）！请切换到登录";
-        regMsg.className = "auth-msg success";
-        showToast("⚠ 已离线注册（仅本设备有效），单机模式完全可用", "error");
+        return;  // 其他云端错误也阻断，不再走离线分支
     }
 
-    regUsername.value = "";
-    regPassword.value = "";
-    regPassword2.value = "";
+    // ---- ③ 云端不可达 → 本地离线注册 ----
 
-    setTimeout(() => {
-        switchAuthTab("login");
-        loginUsername.value = username;
-        loginMsg.textContent = "✅ 注册成功，请登录";
-        loginMsg.className = "auth-msg success";
-    }, 1000);
+    const users = loadUsers();
+    const normalizedKey = username.toLowerCase();
+    const existingEntry = Object.entries(users).find(
+        ([key]) => key.toLowerCase() === normalizedKey
+    );
+
+    // ③-a 本地重名 → 导航到登录页
+    if (existingEntry) {
+        const existingName = existingEntry[0];
+        regMsg.textContent = `⚠ 该用户名已被注册（已存在：${existingName}），请直接登录`;
+        regMsg.className = "auth-msg error";
+        showToast("该账号已存在，请切换到登录页面", "error");
+
+        if (submitBtn) submitBtn.disabled = false;
+
+        gotoLoginWithError(username, "💡 该账号已存在，请直接登录");
+        return;  // 阻断后续代码，防止覆盖已有用户数据
+    }
+
+    // ③-b 加盐哈希：username.toLowerCase() + password，防止彩虹表破解
+    const passwordHash = await sha256(username.toLowerCase() + password);
+    if (passwordHash === null) {
+        regMsg.textContent = "⚠ 当前浏览器不支持安全加密，请使用 HTTPS 访问或连接服务器后重试";
+        regMsg.className = "auth-msg error";
+        if (submitBtn) submitBtn.disabled = false;
+        return;
+    }
+
+    // ③-c 防范 XSS：对用户名做 HTML 转义后再存入 nickname / displayName
+    const safeUsername = escapeHtml(username);
+    users[username.toLowerCase()] = {
+        passwordHash,
+        createdAt: new Date().toISOString(),
+        nickname: safeUsername,
+        displayName: safeUsername,
+        avatar: "👤",
+        stats: createDefaultStats(),
+        friends: [],
+        friendRequestsSent: [],
+        friendRequestsReceived: [],
+    };
+    saveUsers(users);
+
+    regMsg.textContent = "✅ 注册成功（本地模式）！请切换到登录";
+    regMsg.className = "auth-msg success";
+    showToast("⚠ 已离线注册（仅本设备有效），单机模式完全可用", "error");
+
+    gotoLoginAfterSuccess(username);
 }
 
 registerForm.addEventListener("submit", handleRegister);
@@ -302,7 +329,7 @@ async function handleLogin(e) {
         finalUsername = result.user.username;
 
         try {
-            const passwordHash = await sha256(password);
+            const passwordHash = await sha256(finalUsername.toLowerCase() + password);
             if (passwordHash) {
                 const users = loadUsers();
                 users[finalUsername] = {
@@ -336,7 +363,7 @@ async function handleLogin(e) {
         finalUsername = found.key;
         const user = found.user;
 
-        const passwordHash = await sha256(password);
+        const passwordHash = await sha256(finalUsername.toLowerCase() + password);
         if (passwordHash === null) {
             loginMsg.textContent = "⚠ 当前浏览器不支持安全加密，请使用 HTTPS 访问或连接服务器后重试";
             loginMsg.className = "auth-msg error";
